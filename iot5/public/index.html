@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Face Microservice – Demo</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:900px;margin:24px auto;padding:0 12px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    video,canvas{width:420px;max-width:100%;border-radius:12px;border:1px solid #ccc}
+    .card{border:1px solid #ddd;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    button{padding:10px 14px;border-radius:10px;border:1px solid #222;background:#111;color:#fff;cursor:pointer}
+    button.secondary{background:#fff;color:#111}
+    input{padding:10px;border-radius:8px;border:1px solid #ccc;width:220px}
+    #out pre{white-space:pre-wrap}
+    .ok{color:#0a7a28}.err{color:#b00020}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Face Microservice</h1>
+  <div>
+    <a href="/docs" target="_blank"><button class="secondary">/docs</button></a>
+    <a href="/events" target="_blank"><button class="secondary">/events</button></a>
+  </div>
+</header>
+
+<div class="row">
+  <div class="card">
+    <video id="video" autoplay muted playsinline></video>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <input id="name" placeholder="Nome para Enroll" />
+      <button id="btnEnroll">Cadastrar (Enroll)</button>
+      <button id="btnVerify">Verificar (Login)</button>
+    </div>
+    <small>Dica: faça um Enroll antes para melhorar o match.</small>
+  </div>
+  <div class="card" style="flex:1;min-width:260px">
+    <h3>Resultado</h3>
+    <div id="status"></div>
+    <div id="out"><pre></pre></div>
+  </div>
+</div>
+
+<canvas id="canvas" width="640" height="480" hidden></canvas>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const outPre = document.querySelector('#out pre');
+const statusDiv = document.getElementById('status');
+
+async function initCam(){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    video.srcObject = stream;
+  }catch(e){
+    statusDiv.innerHTML = '<span class="err">Sem acesso à câmera: ' + e + '</span>';
+  }
+}
+
+function snapshotToBlob(){
+  const ctx = canvas.getContext('2d');
+  const w = video.videoWidth || 640, h = video.videoHeight || 480;
+  canvas.width = w; canvas.height = h;
+  ctx.drawImage(video, 0, 0, w, h);
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+}
+
+async function callVerify(){
+  statusDiv.textContent = 'Enviando imagem...';
+  const blob = await snapshotToBlob();
+  const form = new FormData();
+  form.append('image', new File([blob], 'shot.jpg', { type: 'image/jpeg' }));
+  form.append('action', 'login');
+  const res = await fetch('/verify', { method:'POST', body: form });
+  let txt = await res.text();
+  outPre.textContent = txt;
+  if(res.ok){
+    try{
+      const j = JSON.parse(txt);
+      if(j.matched){
+        statusDiv.innerHTML = '<span class="ok">✅ Reconhecido: ' + j.user + ' (score: ' + j.score.toFixed(3) + ')</span>';
+      }else{
+        statusDiv.innerHTML = '<span class="err">❌ Não reconhecido</span>';
+      }
+    }catch{}
+  }else{
+    statusDiv.innerHTML = '<span class="err">Erro: ' + res.status + '</span>';
+  }
+}
+
+async function callEnroll(){
+  const name = document.getElementById('name').value.trim();
+  if(!name){ alert('Informe um nome para cadastrar.'); return; }
+  statusDiv.textContent = 'Cadastrando...';
+  const blob = await snapshotToBlob();
+  const form = new FormData();
+  form.append('name', name);
+  form.append('image', new File([blob], 'shot.jpg', { type: 'image/jpeg' }));
+  const res = await fetch('/enroll', { method:'POST', body: form });
+  let txt = await res.text();
+  outPre.textContent = txt;
+  if(res.ok){
+    statusDiv.innerHTML = '<span class="ok">✅ Cadastrado com sucesso</span>';
+  }else{
+    statusDiv.innerHTML = '<span class="err">Erro: ' + res.status + '</span>';
+  }
+}
+
+document.getElementById('btnVerify').addEventListener('click', callVerify);
+document.getElementById('btnEnroll').addEventListener('click', callEnroll);
+
+initCam();
+</script>
+</body>
+</html>
