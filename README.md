@@ -171,8 +171,9 @@ Depois, acesse:
 
 ---
 
-## 🧑‍💻 Autor
-
-**Rodrigo Brasileiro**  
-💼 Engenharia de Software – FIAP  
-🌍 Projeto voltado à **Global Solution 2025 – Resiliência e Monitoramento Inteligente**
+👥 Integrantes
+GUILHERME ROCHA BIANCHINI - RM97974
+NIKOLAS RODRIGUES MOURA DOS SANTOS - RM551566
+PEDRO HENRIQUE PEDROSA TAVARES - RM97877
+RODRIGO BRASILEIRO - RM98952
+THIAGO JARDIM DE OLIVEIRA - RM551624
